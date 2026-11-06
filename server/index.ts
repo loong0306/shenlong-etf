@@ -1,13 +1,14 @@
 import express from 'express';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {createComparisonService} from './comparison.ts';
 import {createService,validateRequest} from './service.ts';
 import {fetchText} from './providers.ts';
 import {createTurnoverService} from './turnover.ts';
 import {createShareService} from './shares.ts';
 import {ETFS} from '../shared/catalog.ts';
 import type {Mode,Period} from '../shared/types.ts';
-export const app=express();const service=createService(fetchText);const shares=createShareService(fetchText);const turnover=createTurnoverService(fetchText);
+export const app=express();const service=createService(fetchText);const shares=createShareService(fetchText);const turnover=createTurnoverService(fetchText);const comparison=createComparisonService(fetchText);
 app.disable('x-powered-by');
 app.use((_req,res,next)=>{res.setHeader('X-Content-Type-Options','nosniff');next();});
 app.get('/api/health',(_req,res)=>res.json({ok:true,app:'神龙ETF'}));
@@ -15,6 +16,11 @@ app.get('/api/catalog',(_req,res)=>res.json(ETFS));
 app.get('/api/market',async(req,res)=>{
  const mode=req.query.mode??'live';if(mode!=='live'){res.status(400).json({error:'无效数据模式'});return;}
  try{res.json(await service.market(mode));}catch{res.status(502).json({error:'行情源暂时不可用，请稍后刷新或检查网络。'});}
+});
+app.get('/api/comparison/:symbol',async(req,res)=>{
+ const symbol=String(req.params.symbol),date=String(req.query.date??'');
+ try{validateRequest(symbol,'day');if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))){res.status(400).json({error:'无效行情日期'});return;}}catch{res.status(400).json({error:'无效ETF'});return;}
+ try{res.json(await comparison(symbol,date));}catch{res.status(502).json({error:'历史成交额基准暂不可用'});}
 });
 app.get('/api/turnover/:symbol',async(req,res)=>{
  const symbol=String(req.params.symbol);

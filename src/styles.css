@@ -15,3 +15,45 @@
 @media(max-width:640px){.turnover-chart{height:310px}.turnover-panel .subtitle-inline{font-size:8px}.turnover-actions{margin-left:auto}.turnover-note{padding-inline:13px;font-size:9px}.turnover-panel{margin-bottom:14px}}
 .refresh-interval-select{width:108px;flex-shrink:0}.refresh-interval-select .ant-select-selector{font-size:11px!important}
 @media(max-width:640px){.heading-actions{flex-wrap:wrap}.heading-actions .live-source-tag{font-size:10px;padding-inline:8px}.refresh-interval-select{width:97px}}
+.comparison-panel .panel-header{min-height:62px;padding-inline:22px;gap:12px;flex-wrap:wrap}
+.comparison-panel .panel-header h3{font-size:14px}
+.comparison-timestamp{font-size:11px;color:#8793a5;font-variant-numeric:tabular-nums}
+.comparison-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:17px 19px}
+.comparison-search{width:205px}
+.comparison-controls>.muted{margin-left:auto;font-size:10px}
+.comparison-controls .ant-select-selector,.comparison-controls .ant-input{font-size:12px!important}
+.comparison-panel .ant-table{font-size:12px}
+.comparison-panel .ant-table-thead>tr>th{padding:14px 12px;background:#f7f9fc;font-size:11px;font-weight:500;white-space:nowrap;border-bottom:1px solid #e9edf3}
+.comparison-panel .ant-table-thead>tr>th::before{display:none}
+.comparison-column-title{display:inline-flex;flex-direction:column;gap:5px;line-height:1.4}
+.comparison-column-title>span{color:#66758a}
+.comparison-column-title .anticon{font-size:10px;margin-left:5px;color:#a7b1c0;cursor:help}
+.comparison-column-title small{font-size:10px;font-weight:400;color:#9aa5b5}
+.comparison-panel .ant-table-tbody>tr>td{height:76px;padding:14px 12px;vertical-align:middle;border-bottom:1px solid #eef1f6}
+.comparison-panel .ant-table-tbody>tr:hover>td{background:#f8fbff!important}
+.comparison-panel .mono{font-size:13px;white-space:nowrap}
+.comparison-panel b{font-weight:550}
+.comparison-etf{display:flex;flex-direction:column;gap:8px}
+.comparison-etf .ant-btn{padding:0;height:auto;justify-content:start;font-size:12px;line-height:1.6;color:#34435b;font-weight:550;white-space:normal;text-align:left}
+.comparison-etf .ant-btn:hover{color:#1677ff!important}
+.comparison-etf>span{display:flex;align-items:center;gap:9px;color:#8e9bb0;font-size:10px;font-variant-numeric:tabular-nums}
+.comparison-etf .ant-tag{font-size:9px;line-height:18px;padding-inline:5px;margin:0;background:#f0f5fc;color:#6987b2}
+.comparison-category{font-size:11px;color:#748297;white-space:nowrap}
+.comparison-number{display:flex;flex-direction:column;align-items:flex-end;gap:7px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.comparison-number b{font-size:13px}
+.comparison-number small{font-size:10px;line-height:1.4;color:#93a0b2}
+.comparison-ratio{padding:2px 7px;background:#f2f5f9;border-radius:4px;color:#596b85;line-height:1.5}
+.comparison-ratio.is-active{background:#fff0f0;color:var(--up)}
+.comparison-panel .comparison-latest-price{padding-right:22px}
+.comparison-panel .comparison-latest-price b{font-size:15px;font-weight:600}
+.comparison-panel .ant-table-cell:first-child{padding-left:22px}
+.comparison-panel svg{display:block;margin-inline:auto;max-width:100%}
+.comparison-footer{padding:15px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:10px;line-height:1.7;color:#92a0b3}
+.comparison-source-status{padding:0 22px 16px;color:#ad792a;font-size:11px;line-height:1.8}
+.comparison-notes{border-top:1px solid #edf0f5;background:#fafbfd;padding:0 22px}
+.comparison-notes summary{padding:15px 0;cursor:pointer;list-style-position:inside;color:#7f8fa6;font-size:11px;user-select:none}
+.comparison-notes summary .anticon{margin-right:5px}
+.comparison-notes summary:focus-visible{outline:2px solid #1677ff;outline-offset:-2px}
+.comparison-notes>div{padding:0 0 14px 17px;max-width:1000px}
+.comparison-notes p{font-size:11px;line-height:1.9;color:#8796aa;margin:4px 0 8px}
+@media(max-width:640px){.comparison-panel .panel-header{padding:15px;gap:8px}.comparison-panel .panel-header h3{font-size:13px}.comparison-timestamp{font-size:10px}.comparison-controls{padding:15px;gap:10px}.comparison-controls>.ant-select:first-child{width:calc(58% - 5px)!important}.comparison-controls>.ant-select:nth-child(2){width:calc(42% - 5px)!important}.comparison-search{width:100%;flex-basis:100%;min-width:0}.comparison-panel .ant-table-cell:first-child{padding-left:15px}.comparison-footer{padding:13px 15px;gap:5px}.comparison-notes{padding-inline:15px}.comparison-source-status{padding-inline:15px}}

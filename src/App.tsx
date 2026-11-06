@@ -12,13 +12,14 @@ import {compact,price,pct,tone,clock,dateTime} from './format.ts';
 import {TurnoverChart} from './components/TurnoverChart.tsx';
 import {PriceChart} from './components/PriceChart.tsx';
 import {FlowPanel} from './components/FlowPanel.tsx';
+import {FundComparison} from './components/FundComparison.tsx';
 import {Holdings} from './components/Holdings.tsx';
 import {SignalRadar} from './components/SignalRadar.tsx';
 import {AlertCenter} from './components/AlertCenter.tsx';
 
-type View='overview'|'holdings'|'alerts'|'settings';
-const titles:Record<View,string>={overview:'市场概览',holdings:'机构持仓',alerts:'预警中心',settings:'数据与设置'};
-const descriptions:Record<View,string>={overview:'追踪宽基 ETF，观察市场资金的每一次脉动。',holdings:'区分清算后每日总份额与历史机构持有人披露。',alerts:'让异常走到眼前，让每一次提示都有据可查。',settings:'了解数据来源，按你的习惯配置监控。'};
+type View='comparison'|'overview'|'holdings'|'alerts'|'settings';
+const titles:Record<View,string>={overview:'市场概览',comparison:'资金对比',holdings:'机构持仓',alerts:'预警中心',settings:'数据与设置'};
+const descriptions:Record<View,string>={overview:'追踪宽基 ETF，观察市场资金的每一次脉动。',comparison:'统一口径比较8只宽基ETF的规模、成交活跃度与历史机构持有。',holdings:'区分清算后每日总份额与历史机构持有人披露。',alerts:'让异常走到眼前，让每一次提示都有据可查。',settings:'了解数据来源，按你的习惯配置监控。'};
 function Logo(){return <div className="brand"><div className="brand-mark"><svg viewBox="0 0 28 28" fill="none"><path d="M6 21V11m5 10V6m6 15V14m5 7V9" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"/></svg></div><div><b className="brand-name">神龙ETF</b></div></div>;}
 function Metric({icon,label,value,unit,note,detail,color='blue'}:{icon:React.ReactNode;label:string;value:string;unit?:string;note:string;detail?:React.ReactNode;color?:string}){
  return <section className="metric panel"><div className="metric-heading"><span>{label}</span><i className={`metric-icon ${color}`}>{icon}</i></div><div className="metric-value"><strong>{value}</strong><span>{unit}</span>{detail}</div><div className="metric-note">{note}</div></section>;
@@ -81,7 +82,7 @@ export default function App(){
   const permission=await Notification.requestPermission();setDraftRules(v=>({...v,notifications:permission==='granted'}));
   if(permission!=='granted')void message.info('未获得通知权限，页面内提示仍然可用');
  };
- const navItems=[{key:'overview',icon:<AppstoreOutlined/>,label:'市场概览'},{key:'holdings',icon:<BankOutlined/>,label:'机构持仓'},{key:'alerts',icon:<BellOutlined/>,label:<span className="nav-alert-label">预警中心{unread>0&&<i>{unread}</i>}</span>},{key:'settings',icon:<DatabaseOutlined/>,label:'数据与设置'}];
+ const navItems=[{key:'overview',icon:<AppstoreOutlined/>,label:'市场概览'},{key:'comparison',icon:<SwapOutlined/>,label:'资金对比'},{key:'holdings',icon:<BankOutlined/>,label:'机构持仓'},{key:'alerts',icon:<BellOutlined/>,label:<span className="nav-alert-label">预警中心{unread>0&&<i>{unread}</i>}</span>},{key:'settings',icon:<DatabaseOutlined/>,label:'数据与设置'}];
  return <div className="app-shell">
  {mobileMenu&&<div className="sidebar-scrim" onClick={()=>setMobileMenu(false)}/>}
  <aside className={`sidebar ${mobileMenu?'mobile-open':''}`}><Logo/><div className="nav-caption">市场观察</div><Menu mode="inline" selectedKeys={[view]} items={navItems} onClick={({key})=>navigate(key as View)}/></aside>
@@ -111,6 +112,7 @@ export default function App(){
  <TurnoverChart symbol={selected} paused={paused} version={refreshVersion} refreshSeconds={refreshSeconds}/>
  <Holdings symbol={selected} onSelect={selectEtf} mode={mode} compactView onExpand={()=>navigate('holdings')}/>
  </>}
+ {view==='comparison'&&<FundComparison quotes={etfQuotes} favorites={favorites} version={refreshVersion} paused={paused} onSelect={jumpToChart}/>}
  {view==='holdings'&&<Holdings symbol={selected} onSelect={selectEtf} mode={mode}/>}
  {view==='alerts'&&<AlertCenter history={history} onRead={readAll} onClear={clearAlerts} onSettings={openRules} onSelect={jumpToChart}/>}
  {view==='settings'&&<div className="settings-grid"><section className="panel"><div className="panel-header"><h3><DatabaseOutlined/> 数据来源与口径</h3><Tag color="blue" bordered={false}>免费版</Tag></div><div className="settings-body"><div className="source-card"><div className="source-icon"><CloudSyncOutlined/></div><div><h4>公开行情与 K 线</h4><p>腾讯财经公开接口，展示最新价、成交量额、内外盘、五档委托、分时、5分钟和日线。每{refreshSeconds}秒拉取行情和累计成交额，K线和技术指标每60秒刷新。</p><a href="https://gu.qq.com/sh510300" target="_blank" rel="noreferrer">腾讯财经 <ExportOutlined/></a></div><Tag color={market.error?'default':'green'} bordered={false}>{market.error?'暂不可用':'已接入'}</Tag></div><Divider/><div className="source-card"><div className="source-icon purple"><BankOutlined/></div><div><h4>历史机构持仓披露</h4><p>新浪财经转载的历史 ETF 前十大持有人。2026年5月1日起的新准则不再将该名单列为强制披露项目。历史名单不代表当前持仓。</p><a href={`https://stock.finance.sina.com.cn/fundInfo/view/FundInfo_JJCYR.php?symbol=${selectedInfo.code}`} target="_blank" rel="noreferrer">查看当前 ETF 持有人来源 <ExportOutlined/></a></div><Tag bordered={false}>历史快照</Tag></div><Divider/><Alert type="info" showIcon message="这些指标分别说明什么" description={<div className="definitions"><p><b>成交额 / 成交量：</b>二级市场交易规模，每笔交易都有买方和卖方。</p><p><b>内外盘成交差：</b>外盘减内盘，是成交方向分类的参考，不等于申赎净流入。</p><p><b>日度总份额：</b>直接读取沪深交易所，清算后/T+1更新；日期以交易所记录为准，不等于国家队持仓变化。</p><p><b>国家队观察：</b>按明确机构名称识别公开持仓，公开盘口不含交易者实时身份。</p></div>}/></div></section><div><section className="panel"><div className="panel-header"><h3><SettingOutlined/> 监控偏好</h3></div><div className="settings-body"><div className="setting-row"><div><b>技术预警</b><p>仅监控「我的关注」中的ETF</p></div><Switch checked={rules.enabled} onChange={checked=>setRules({...rules,enabled:checked})}/></div><div className="setting-row"><div><b>RSI 阈值</b><p>超卖 &lt; {rules.oversold} · 超买 &gt; {rules.overbought}</p></div><Button size="small" onClick={openRules}>修改</Button></div><div className="setting-row"><div><b>关注列表</b><p>当前关注 {favorites.length} 只ETF</p></div><Button size="small" onClick={()=>setManageOpen(true)}>管理</Button></div><div className="setting-row"><div><b>自动刷新</b><p>行情{refreshSeconds}秒 · 分钟线60秒</p></div><Switch checked={!paused} onChange={v=>setPaused(!v)}/></div></div></section><section className="panel limits-panel"><div className="panel-header"><h3><InfoCircleOutlined/> 当前版本说明</h3></div><div className="settings-body"><p>公开数据可能延迟、限流或调整格式，页面展示数据时间，失败时保留明确提示。</p><p>RSI 使用 Wilder 平滑，布林带使用20周期与2倍总体标准差，仅对已收盘K线计算。</p><p>同一标的、同一信号10分钟内不重复提醒。同一根K线只记录一次。过期行情不触发实时提醒。</p><p>本版为本地看板，关闭页面后不会继续提醒。无交易下单功能。</p><Tag bordered={false}>本地存储自选与规则</Tag></div></section></div></div>}
