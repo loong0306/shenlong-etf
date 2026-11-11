@@ -1,0 +1,81 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {chromium} from 'playwright';
+import {quoteSamples} from '../tests/fixtures.ts';
+import {FIVE_MINUTES} from '../shared/comparison.ts';
+const base=process.env.APP_URL??'http://127.0.0.1:5173';
+const now=Date.parse('2026-11-11T14:11:00+08:00');
+const values=[...Array.from({length:18},(_,i)=>4-i*.001),4,...Array.from({length:18},(_,i)=>4.001+i*.001),4];
+const stamp=minute=>`2026-11-11T${String(Math.floor(minute/60)).padStart(2,'0')}:${String(minute%60).padStart(2,'0')}:00+08:00`;
+const candles=values.map((close,i)=>({time:stamp(FIVE_MINUTES[i]),open:values[i-1]??close,close,high:close+.002,low:close-.002,volume:10000,amount:40000}));
+const minutes=Array.from({length:282},(_,i)=>570+i).filter(m=>m<=690||m>=780).map((m,i)=>({time:stamp(m),open:4,close:4+Math.sin(i/12)*.004,high:4.01,low:3.99,volume:1000,amount:4000,average:4}));
+const envelope={mode:'live',source:'受控图表测试数据',sourceUrl:'https://example.com',fetchedAt:new Date(now).toISOString(),warnings:[]};
+const browser=await chromium.launch({headless:true,executablePath:process.env.BROWSER_EXECUTABLE_PATH??'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+const page=await browser.newPage({viewport:{width:1512,height:1080}});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.clock.install({time:new Date(now)});
+await page.route('**/api/**',async route=>{
+ const url=new URL(route.request().url()),symbol=url.pathname.split('/').at(-1);
+ if(url.pathname==='/api/market')return route.fulfill({json:{...envelope,quotes:quoteSamples().map(q=>({...q,time:new Date(now).toISOString()}))}});
+ if(url.pathname.startsWith('/api/chart/')){
+  const period=url.searchParams.get('period');
+  const bars=period==='minute'?minutes:period==='day'?candles.map((b,i)=>({...b,time:`2026-10-${String(i%28+1).padStart(2,'0')}`})):symbol==='sh510300'?candles:candles.map(b=>({...b,close:4}));
+  return route.fulfill({json:{...envelope,symbol,period,bars,rsi:50,bands:null,indicatorTime:candles.at(-1).time}});
+ }
+ if(url.pathname.startsWith('/api/holders/'))return route.fulfill({json:{...envelope,symbol,reportDate:'2025-12-31',previousReportDate:null,holders:[{name:'受控测试机构',shares:100,ratio:1,national:false,delta:null}]}});
+ if(url.pathname.startsWith('/api/turnover/'))return route.fulfill({json:{...envelope,symbol,today:'2026-11-11',days:[],sampleCount:0,baselineDates:[],average:[]}});
+ if(url.pathname.startsWith('/api/shares/'))return route.fulfill({json:{...envelope,symbol,points:[{date:'2026-11-10',shares:1000}],change:null,changePct:null}});
+ return route.fulfill({json:[]});
+});
+const chartState=()=>page.evaluate(async()=>{
+ const ec=await import('/node_modules/.vite/deps/echarts_core.js');
+ const chart=ec.getInstanceByDom(document.querySelector('.price-chart'));
+ if(!chart)return null;
+ const option=chart.getOption();
+ return {axis:option.xAxis[0].data,prices:option.series[0].data,volumes:option.series[1].data,points:option.series[0].markPoint?.data??[]};
+});
+try{
+ await page.goto(base,{waitUntil:'networkidle'});
+ await page.locator('.price-chart canvas').waitFor();
+ await page.getByRole('status').filter({hasText:'最新确认'}).waitFor();
+ const minute=await chartState();
+ assert.equal(minute.axis.length,242);assert.equal(minute.axis[0],'09:30');assert.equal(minute.axis.at(-1),'15:00');
+ assert.equal(minute.prices.at(-1),null);assert.equal(minute.volumes.at(-1),null);assert.equal(minute.points.length,2);
+ assert.deepEqual(minute.points.map(p=>p.name),['开仓观察','减仓观察']);
+ await page.locator('.chart-panel').screenshot({path:'artifacts/chart-minute-observations.png'});
+ console.log('PASS minute axis to 15:00, future price/volume empty, both observation kinds plotted');
+ await page.locator('.chart-controls').getByText('5分钟',{exact:true}).click();
+ await page.waitForFunction(()=>document.querySelector('.price-chart')?.getAttribute('aria-label')?.includes('38条数据'));
+ assert.equal((await chartState()).points.length,2);
+ const marker=await page.evaluate(async()=>{
+  const ec=await import('/node_modules/.vite/deps/echarts_core.js');
+  const chart=ec.getInstanceByDom(document.querySelector('.price-chart'));
+  const point=chart.getOption().series[0].markPoint.data[0];
+  const pixel=chart.convertToPixel({seriesIndex:0},point.coord);
+  const rect=document.querySelector('.price-chart').getBoundingClientRect();
+  return {x:rect.left+pixel[0],y:rect.top+pixel[1]+13};
+ });
+ await page.mouse.move(marker.x,marker.y);
+ await page.getByText('收盘后确认，实际成交价可能不同',{exact:false}).last().waitFor({timeout:5000});
+ await page.locator('.chart-panel').screenshot({path:'artifacts/chart-m5-observations.png'});
+ await page.getByRole('checkbox',{name:'买卖观察点'}).uncheck();assert.equal((await chartState()).points.length,0);
+ await page.getByRole('checkbox',{name:'买卖观察点'}).check();assert.equal((await chartState()).points.length,2);
+ console.log('PASS 5-minute markers, hover explanation and show/hide toggle');
+ await page.locator('.chart-controls').getByText('日K',{exact:true}).click();
+ await page.waitForLoadState('networkidle');
+ assert.equal((await chartState()).points.length,0);assert.equal(await page.getByRole('checkbox',{name:'买卖观察点'}).isDisabled(),true);
+ await page.locator('.chart-controls').getByText('分时',{exact:true}).click();await page.waitForLoadState('networkidle');
+ await page.getByRole('row',{name:'选择创业板ETF易方达'}).click();await page.waitForLoadState('networkidle');
+ assert.equal((await chartState()).points.length,0);
+ console.log('PASS daily chart and ETF switching never retain previous markers');
+ await page.getByRole('row',{name:'选择沪深300ETF华泰柏瑞'}).click();await page.waitForLoadState('networkidle');
+ await page.clock.fastForward(8*60000);
+ assert.ok((await page.locator('.trade-observation').innerText()).includes('历史观察'));
+ console.log('PASS stale observation is explicitly historical');
+ await page.setViewportSize({width:390,height:844});await page.waitForTimeout(400);
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ const mobile=await chartState();assert.equal(mobile.axis.at(-1),'15:00');assert.equal(mobile.points.length,2);
+ await page.locator('.chart-panel').screenshot({path:'artifacts/chart-mobile-observations.png'});
+ assert.deepEqual(errors,[]);
+ console.log('PASS mobile full axis and markers; no horizontal page overflow or runtime errors');
+}catch(error){console.log('BROWSER_DIAGNOSTIC',JSON.stringify({errors,body:(await page.locator('body').innerText()).slice(0,2000)}));await page.screenshot({path:'artifacts/chart-check-failure.png',fullPage:true});throw error;}finally{await browser.close();}
